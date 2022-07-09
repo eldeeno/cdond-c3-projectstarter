@@ -42,11 +42,9 @@ jobs:
       - checkout
       - restore_cache:
           keys: frontend-build
-      -run:
-          command: |
-            cd frontend
-            npm run test
-
+      - run: |
+        cd frontend
+        npm run test
   test-backend:
     docker:
       - image: circleci/node:13.8.0
@@ -54,10 +52,9 @@ jobs:
       - checkout
       - restore_cache:
           keys: backend-build
-      - run:
-          command: |
-            cd backend
-            npm run test
+      - run: |
+        cd backend
+        npm run test
 
 workflows:
   default:
