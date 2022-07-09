@@ -42,6 +42,7 @@ jobs:
       - checkout
       - restore_cache:
           keys: frontend-build
+      - run: cd frontend
       - run: npm run test
 
   test-backend:
@@ -51,6 +52,7 @@ jobs:
       - checkout
       - restore_cache:
           keys: backend-build
+      - run: cd backend
       - run: npm run test
 
 workflows:
