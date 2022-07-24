@@ -197,8 +197,14 @@ jobs:
       - image: python:3.7-alpine3.11
     steps:
       - checkout
+      - run: 
+          name: Add SSH
+          command: |
+            apk add --update openssh-client git
       - add_ssh_keys:
           fingerprints: ["15:c8:8a:1d:e2:ad:40:d6:12:7f:1a:66:9d:cb:87:7c"]
+      - attach_workspace:
+          at: ~/
       - run:
           name: Install dependencies
           command: |
@@ -208,9 +214,7 @@ jobs:
           name: Configure server
           working_directory: ./.circleci/ansible
           command: |
-            pwd &&
-            ls -la
-            ansible-playbook -i inventory.txt configure-server.yml
+            ansible-playbook configure-server.yml -i inventory.txt
       - destroy_environment:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail    
@@ -264,8 +268,8 @@ jobs:
             cat frontend/.env
       - run:
           name: Deploy frontend objects
-          working_directory: ./frontend
           command: |
+            cd frontend
             npm install
             npm run build
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
@@ -294,16 +298,17 @@ workflows:
       - configure-infrastructure:
           requires:
             - deploy-infrastructure
+      - deploy-infrastructure:
+          requires: [test-frontend, test-backend, scan-frontend, scan-backend]
+          filters:
+            branches:
+              only: [master]
+      - configure-infrastructure:
+          requires: [deploy-infrastructure]
       - run-migrations:
-          requires: 
-            - test-backend
-            - test-frontend
-            - scan-backend
-            - scan-frontend
-            - configure-infrastructure
+          requires: [configure-infrastructure]
       - deploy-frontend:
-          requires: 
-            [run-migrations]
+          requires: [run-migrations]
       # - deploy-backend:
       #     requires: [run-migrations]
       # - smoke-test:
