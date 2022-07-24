@@ -134,15 +134,6 @@ jobs:
                 --stack-name "udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
                 --parameter-overrides ID="${CIRCLE_WORKFLOW_ID:0:7}"  \
                 --tags project=udapeople
-      
-      # - run:
-      #     name: Save backend URL in memstash
-      #     command: |
-      #       BACKEND_IP=$(aws ec2 describe-instances \
-      #         --query 'Reservations[*].Instances[*].PublicIpAddress' \
-      #         --filters "Name=tag:project,Values=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}" \
-      #         --output text)
-      #       curl -H "Content-Type: text/plain" -H "token: 1e288415-cfc8-4a0a-a23c-087eb7cd7678" --request PUT --data "http://$BACKEND_IP:3030" https://api.memstash.io/values/BACKEND_URL
       - run:
           name: Ensure front-end infrastructure exist
           working_directory: ./.circleci/files
@@ -168,6 +159,31 @@ jobs:
       - destroy_environment:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
+  
+  configure-infrastructure:
+    docker:
+      # Docker image here that supports Ansible
+      - image: python:3.7-alpine3.11
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: ["15:c8:8a:1d:e2:ad:40:d6:12:7f:1a:66:9d:cb:87:7c"]
+      # attach workspace
+      - run:
+          name: Install dependencies
+          command: |
+            apk add --update ansible
+            exit 1
+      - run:
+          name: Configure server
+          working_directory: ./.circleci/ansible
+          command: |
+            cd .circleci/ansible
+            ansible-playbook -i inventory.txt configure-server.yml
+      - destroy_environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail     
+    
 workflows:
   default:
     jobs:
@@ -183,4 +199,5 @@ workflows:
       #     requires: [build-frontend]
 
       ## Infrastructure 
-      - deploy-infrastructure
+      # - deploy-infrastructure
+      - configure-infrastructure
