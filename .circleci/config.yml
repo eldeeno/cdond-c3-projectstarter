@@ -177,7 +177,9 @@ jobs:
           name: Configure server
           working_directory: ./.circleci/ansible
           command: |
-            cd .circleci/ansible
+            pwd &&
+            ls -la
+            cat inventory
             ansible-playbook -i inventory.txt configure-server.yml
       - destroy_environment:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
@@ -198,5 +200,7 @@ workflows:
       #     requires: [build-frontend]
 
       ## Infrastructure 
-      # - deploy-infrastructure
-      - configure-infrastructure
+      - deploy-infrastructure
+      - configure-infrastructure:
+          requires:
+            - deploy-infrastructure
