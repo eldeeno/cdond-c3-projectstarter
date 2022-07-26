@@ -1,2 +1,5 @@
-Public Url to GitHub repository[URL01]: https://github.com/eldeeno/cdond-c3-projectstarter
+[URL01]: 
+https://github.com/eldeeno/cdond-c3-projectstarter
 
+[URL02]
+http://udapeople-12c9f48.s3-website-us-east-1.amazonaws.com
