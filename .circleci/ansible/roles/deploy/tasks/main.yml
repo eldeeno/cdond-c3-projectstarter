@@ -1,34 +1,32 @@
 ---
-- name: "show remote environment"
-  shell: env
-  
-- name: "copy zipped archive"
-  become: true
-  synchronize:
-    src: ../../artifact.tar.gz
-    dest: /home/ubuntu/artifact.tar.gz
-    recursive: true
-
-- name: Creates directory
+- name: Create app directory
   file:
-    path: ~/backend_app
+    path: $HOME/web
     state: directory
 
-- name: Extract the zipped artifact
-  shell: tar xzvf artifact.tar.gz --directory backend_app
+- name: "Copy files to server"
+  ansible.builtin.copy:
+    src: "files/artifact.tar.gz"
+    dest: "$HOME/artifact.tar.gz"
+    follow: yes
 
-- name: Install dependencies
-  args:
-    chdir: /home/ubuntu/backend_app
-  shell: npm install
-
-- name: "delete anything that might already be running"
+- name: "install dependencies."
   become: true
-  ignore_errors: true
-  command: pm2 stop default
+  apt:
+    name:
+      - nodejs
+      - npm
+    state: latest
+    update_cache: yes
 
-- name: "start server"
+- name: "Install Dependencies"
   become: true
-  args:
-    chdir: /home/ubuntu/backend_app
-  shell: pm2 start npm -- start
+  shell: |
+    tar -xvf artifact.tar.gz .
+    rm artifact.tar.gz
+    npm install
+- name: "Start Server"
+  become: true
+  shell: |
+    sudo pm2 stop default
+    sudo pm2 start npm -- run start
