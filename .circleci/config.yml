@@ -1,29 +1,48 @@
 version: 2.1
 
 commands:
-  destroy-environment:
-    description: Destroy back-end and front-end cloudformation stacks given a workflow ID
+  destroy_environment:
+    description: Destroy back-end and front-end cloudformation stacks given a workflow ID.
+    parameters:
+      when:
+        type: string
+      id:
+        type: string
     steps:
       - run:
-          name: Destroy environments
-          when: on_fail
+          name: Destroy udapeople backend cloudformation stack
           command: |
-            aws s3 rm s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
-            aws cloudformation delete-stack --stack-name udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}
-            aws cloudformation delete-stack --stack-name udapeople-frontend-${CIRCLE_WORKFLOW_ID:0:7}
+            aws cloudformation delete-stack --stack-name udapeople-backend-<< parameters.id >>
+          environment:
+            TERM: xterm-256color
+          when: << parameters.when >>
+      - run:
+          name: Destroy udapeople frontend cloudformation stack and S3 bucket
+          command: |
+            aws s3 rm s3://udapeople-<< parameters.id >> --recursive
+            aws cloudformation delete-stack --stack-name udapeople-frontend-<< parameters.id >>
+          environment:
+              TERM: xterm-256color
+          when: << parameters.when >>
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.
+    parameters:
+      ID:
+        type: string
+        default: None   
     steps:
       - run:
           name: Revert migrations
           when: on_fail
           command: |
-            SUCCESS=$(curl https://kvdb.io/RMGye8nEyTiNtTgiBASvpV/migration_${CIRCLE_WORKFLOW_ID:0:7})
-            if [ $SUCCESS -eq 1 ];
+            # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
+            SUCCESS=$(curl --insecure https://kvdb.io/RMGye8nEyTiNtTgiBASvpV/migration_<< parameters.ID >>)
+            echo $SUCCESS
+            if(( $SUCCESS==1 )); 
             then
               cd ~/project/backend
-              npm install --legacy-peer-deps
-              npm run migrations:revert
+              npm install
+              npm run migration:revert
             fi
 jobs:
   build-frontend:
@@ -150,7 +169,9 @@ jobs:
           root: ~/
           paths:
             - project/.circleci/ansible/inventory.txt
-      - destroy-environment
+      - destroy_environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
 
   configure-infrastructure:
     docker:
@@ -173,7 +194,9 @@ jobs:
           command: |
             cd .circleci/ansible
             ansible-playbook -i ~/tmp/project/.circleci/ansible/inventory.txt configure-server.yml
-      - destroy-environment
+      - destroy_environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
 
   run-migrations:
     docker:
@@ -201,7 +224,9 @@ jobs:
               curl https://kvdb.io/RMGye8nEyTiNtTgiBASvpV/migration_${CIRCLE_WORKFLOW_ID:0:7} -d '1'
             fi
       - revert-migrations
-      - destroy-environment
+      - destroy_environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
 
   deploy-frontend:
     docker:
@@ -241,7 +266,9 @@ jobs:
             npm run build
             tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
             aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
-      - destroy-environment
+      - destroy_environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
       - revert-migrations
 
   deploy-backend:
@@ -276,7 +303,9 @@ jobs:
             cp artifact.tar.gz  .circleci/ansible/roles/deploy/files/
             cd .circleci/ansible
             ansible-playbook -i ~/tmp/project/.circleci/ansible/inventory.txt deploy-backend.yml
-      - destroy-environment
+      - destroy_environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
       - revert-migrations
 
   smoke-test:
@@ -321,7 +350,9 @@ jobs:
             else
               return 1
             fi
-      - destroy-environment
+      - destroy_environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
       - revert-migrations
 
   # This is the right way to handle cleanup and update. Notice how I first get the oldWorkflowId before doing updat
@@ -338,7 +369,9 @@ jobs:
             --stack-name InitialStack \
             --parameter-overrides WorkflowID="udapeople-${CIRCLE_WORKFLOW_ID:0:7}" \
             --tags project=udapeople
-      - destroy-environment
+      - destroy_environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
       - revert-migrations 
   cleanup:
     docker:
